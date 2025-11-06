@@ -13,6 +13,8 @@ from simulations.agents.agent_mechanic.agent import call_mechanic_agent
 from state import State
 from metric_config import MetricConfigurations
 
+import plotting
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -162,7 +164,48 @@ async def run_all_interpret(test_results):
     return await asyncio.gather(*[asyncio.create_task(one(r)) for r in test_results])
 
 import state
+def what_changed() -> tuple[str, list[str]]:
+    changed_fields = []
+
+    old_state = state.system_state.get_old_state()
+    new_state = {
+        "temperature":state.system_state.get_temperature(),
+        "top_p":state.system_state.get_top_p(),
+        "top_k":state.system_state.get_top_k(),
+        "system_prompt":state.system_state.get_system_prompt()
+    }
+
+    for key, new_value in new_state.items():
+        old_value = old_state.get(key)
+        if new_value != old_value:
+            changed_fields.append(key)
+
+    if len(changed_fields) == 0:
+        change_type = "none"
+    elif len(changed_fields) == 1:
+        change_type = changed_fields[0]
+    else:
+        change_type = "combo"
+
+    return change_type, changed_fields
+
+def log_changes(i: int, times: dict[str, float], rag_plotter: plotting.RagTuningRun):
+
+    change_type, changed_fields = what_changed()
+    rag_plotter.log_iteration(
+        iteration=i,
+        change_type=change_type,
+        changed_fields=changed_fields,
+        temperature=state.system_state.get_temperature(),
+        top_p=state.system_state.get_top_p(),
+        top_k=state.system_state.get_top_k(),
+        system_prompt=state.system_state.get_system_prompt(),
+        test_accuracy=state.system_state.get_accuracy(),
+        times=times
+    )
+
 async def main():
+    plotter = plotting.RagTuningRun(run_name="RAG Autotune")
     should_test = True
     loops = 0
 
@@ -214,34 +257,56 @@ async def main():
         mechanic_start = time.perf_counter()
         await invoke_mechanic(final_scores)
         mechanic_end = time.perf_counter()
+        current_state.set_num_changes(0)
         print(f"Mechanic agent finished in <{round(mechanic_end - mechanic_start, 2)}> secs.", flush=True)
 
         print(f"\nLOOP #<{loops}> OLD STATE:\n{current_state.output_old_state()}")
         print(f"LOOP #<{loops}> NEW STATE:\n{str(current_state.output_state())}")
 
+
+        log_changes(
+            i=loops + 1, 
+            times={
+                "rag":round(rag_end - rag_start, 2),
+                "test":round(test_end - test_start, 2),
+                "interpret":round(interpretations_end - interpretations_start, 2),
+                "mechanic":round(mechanic_end - mechanic_start, 2)
+            },
+            rag_plotter=plotter
+        )
+
         print(f"\n--- END LOOP #<{loops}> ---\n")
 
-        if str(current_state.get_old_state()) == str(current_state):
+        #import pdb; pdb.set_trace()
+        if what_changed()[0] == "none":
             should_test = False
+
+        # if str(current_state.get_old_state()) == str(current_state):
+        #     should_test = False
 
         current_state.update_old_state()
 
         if should_test:
             loops += 1
 
-        if not should_test:
-            return {
-                'status':'finished',
-                'message':f'automatic testing stopped',
-                'results':f'{final_scores}'
-            }
+    plotter.print_console_summary()
+    plotter.plot_figures(show=True, save_prefix="rag_autotune")
+    plotter.export_csv("rag_autotune_iterations.csv")
+    plotter.export_json("rag_autotune_iterations.json")
 
-        if loops == MAX_LOOPS:
-            return {
-                'status':'finished',
-                'message':f'max_loops ({MAX_LOOPS}) reached',
-                'results':f'{final_scores}'
-            }
+    if not should_test:
+        return {
+            'status':'finished',
+            'message':f'automatic testing stopped',
+            'results':f'{final_scores}'
+        }
+
+    if loops == MAX_LOOPS:
+        return {
+            'status':'finished',
+            'message':f'max_loops ({MAX_LOOPS}) reached',
+            'results':f'{final_scores}'
+        }
 
 if __name__ == "__main__":
     print(asyncio.run(main()))

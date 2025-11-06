@@ -14,6 +14,9 @@ class State:
     __old_state: dict
     __was_changed = False
     __session_service = InMemorySessionService()
+    __num_changes = 0
+
+    MAX_CHANGES = 4
 
     def __init__(self, temperature: float, top_p: float, top_k: int, system_prompt: str, golden_data: list[dict] = []):
         self.__temperature = temperature
@@ -75,6 +78,8 @@ class State:
         return self.__session_service
     def get_user_id(self):
         return self.__user_id
+    def get_num_changes(self):
+        return self.__num_changes
     
     def set_temperature(self, new_temp):
         if new_temp != self.__temperature:
@@ -102,6 +107,8 @@ class State:
         self.__session_id = s_id
     def set_user_id(self, u_id):
         self.__user_id = u_id
+    def set_num_changes(self, n_ch):
+        self.__num_changes = n_ch
 
     def get_old_state(self):
         if self.__old_state:

@@ -19,7 +19,7 @@ GENERATIVE_MODEL = "gemini-2.5-flash"
 
 # Tools
 # TODO: should have a tool for each hyperparameter? (Test and see what works better)
-def change_hyperparameters(temperature: float, top_p: float, top_k: int):
+def change_hyperparameters(temperature: float, top_p: float, top_k: int) -> bool:
     """
     Change the generation hyperparameters in the test state.
 
@@ -42,7 +42,9 @@ def change_hyperparameters(temperature: float, top_p: float, top_k: int):
 
     Returns
     -------
-    None
+    success : bool
+        True if setting hyperparameters succeeded; False otherwise.
+        If False, hyperparameters cannot be set until further testing is completed.
 
     Example
     -------
@@ -51,10 +53,18 @@ def change_hyperparameters(temperature: float, top_p: float, top_k: int):
     change_hyperparameters(temperature=0.9, top_p=0.9, top_k=50)
     """
     # Update state hyperparameter values using the global state object
-    system_state.set_temperature(temperature)
-    system_state.set_top_p(top_p)
-    system_state.set_top_k(top_k)
-    print("Changing hyperparameters")
+
+    if system_state.get_num_changes() < system_state.MAX_CHANGES:
+        system_state.set_temperature(temperature)
+        system_state.set_top_p(top_p)
+        system_state.set_top_k(top_k)
+        print("Changing hyperparameters")
+
+        system_state.set_num_changes(system_state.get_num_changes() + 1)
+        return True
+
+    return False
+
 
 def change_workspace_prompt(prompt: str):
     """
@@ -70,7 +80,9 @@ def change_workspace_prompt(prompt: str):
 
     Returns
     -------
-    None
+    success : bool
+        True if setting system prompt succeeded; False otherwise.
+        If False, system prompt cannot be set until further testing is completed.
 
     Example
     -------
@@ -81,8 +93,14 @@ def change_workspace_prompt(prompt: str):
     )
     """
     # Update state workspace prompt using the global state object
-    system_state.set_system_prompt(prompt)
-    print("Changing Workspace Prompt")
+    if system_state.get_num_changes() < system_state.MAX_CHANGES:
+        system_state.set_system_prompt(prompt)
+        print("Changing Workspace Prompt")
+        
+        system_state.set_num_changes(system_state.get_num_changes() + 1)
+        return True
+    
+    return False
 
 #TODO: Does this need to be a different kind of agent? Just need to decide what tool to use and use it
 def get_root_agent():

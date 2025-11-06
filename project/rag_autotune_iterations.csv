@@ -1,0 +1,6 @@
+iteration,change_type,changed_fields,temperature,top_p,top_k,system_prompt_hash,system_prompt_preview,test_accuracy,time_rag_s,time_test_s,time_interpret_s,time_mechanic_s,time_total_s
+1,system_prompt,['system_prompt'],0.1,0.3,40,6d63d642,Answer the question using only the explicit details found in,0.7894736842105263,20.04,19.1,12.73,15.21,67.08000000000001
+2,system_prompt,['system_prompt'],0.1,0.3,40,,,0.5789473684210527,47.59,19.48,19.84,13.38,100.29
+3,combo,"['temperature', 'top_p']",0.2,0.4,40,,,0.631578947368421,63.28,14.74,12.27,16.16,106.44999999999999
+4,top_k,['top_k'],0.2,0.4,50,,,0.6842105263157895,54.07,24.53,11.93,14.08,104.61
+5,combo,"['temperature', 'top_p']",0.15,0.35,50,,,0.7368421052631579,23.81,17.03,12.77,13.95,67.56
